@@ -19,17 +19,16 @@
         </a>
         <div class="topbar-status">
           <span class="status-dot" aria-hidden="true"></span>
-          Technický základ
+          Stavba infrastruktury
         </div>
       </header>
 
       <main class="workspace">
         <aside class="sidebar" aria-label="Ovládání simulátoru">
           <p class="eyebrow">NOVÝ DOPRAVNÍ SIMULÁTOR</p>
-          <h1>Budujeme dopravní síť.</h1>
+          <h1>Postav si vlastní dopravní síť.</h1>
           <p class="intro">
-            Modulární základ pro simulaci skutečných měst, infrastruktury a
-            integrované veřejné dopravy.
+            Klikni do mapy a polož uzly infrastruktury. Vyber dva uzly a propojíš je úsekem sítě.
           </p>
 
           <section class="panel-section">
@@ -37,17 +36,36 @@
             <div class="status-card">
               <span class="status-icon" aria-hidden="true">✓</span>
               <div>
-                <strong>Projektová architektura</strong>
-                <p>Inventář a migrační plán připraveny</p>
+                <strong>Interaktivní mapa</strong>
+                <p>Uzly, úseky a ukládání do tohoto prohlížeče</p>
               </div>
             </div>
             <div class="status-card">
               <span class="status-icon pending" aria-hidden="true">○</span>
               <div>
-                <strong>První síť infrastruktury</strong>
-                <p>Další krok: testovatelné herní jádro</p>
+                <strong id="network-count">Síť je prázdná</strong>
+                <p id="network-hint">Zvol nástroj a začni stavět</p>
               </div>
             </div>
+          </section>
+
+          <section class="panel-section build-tools">
+            <h2>Stavba infrastruktury</h2>
+            <div class="tool-buttons">
+              <button id="tool-node" class="tool-button active" type="button">＋ Přidat uzel</button>
+              <button id="tool-edge" class="tool-button" type="button">↔ Propojit uzly</button>
+            </div>
+            <label class="field-label" for="network-mode">Typ infrastruktury</label>
+            <select id="network-mode" class="tool-select">
+              <option value="tram">Tramvajová trať</option>
+              <option value="bus">Autobusová trasa</option>
+              <option value="rail">Železnice</option>
+            </select>
+            <div class="tool-buttons">
+              <button id="tool-delete" class="tool-button danger" type="button">Smazat vybrané</button>
+              <button id="tool-reset" class="tool-button" type="button">Nová síť</button>
+            </div>
+            <p id="tool-message" class="tool-message" role="status">Klikni do mapy a přidej první uzel.</p>
           </section>
 
           <section class="panel-section">
@@ -62,7 +80,7 @@
 
           <footer class="sidebar-footer">
             <span>TransitSim</span>
-            <span>Verze 0.1 · Základ projektu</span>
+            <span>Verze 0.2 · Stavba sítě</span>
           </footer>
         </aside>
 
