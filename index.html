@@ -278,22 +278,78 @@
         let extendingLine = null;
         let extendPosition = null; 
 
-       // Globální cache pro uložení již spočítaných tras
-let pathCache = {};
+       // Omezená LRU cache: nedovolíme, aby se páry zastávek hromadily bez konce.
+const PATH_CACHE_LIMIT = 2000;
+let pathCache = new Map();
 let nearbyStopsCache = null;
+let routeGraphCache = null;
 
-// Zneplatníme jen výpočty závislé na síti, když se změní zastávky nebo linky.
 function clearPathCache() {
-    pathCache = {};
+    pathCache.clear();
 }
 
 function clearNearbyStopsCache() {
     nearbyStopsCache = null;
 }
 
+function clearRouteGraphCache() {
+    routeGraphCache = null;
+}
+
 function invalidateNetworkCaches() {
     clearPathCache();
     clearNearbyStopsCache();
+    clearRouteGraphCache();
+}
+
+function getCachedPath(cacheKey) {
+    if (!pathCache.has(cacheKey)) return undefined;
+    const value = pathCache.get(cacheKey);
+    // Přesuneme často používanou položku na konec LRU pořadí.
+    pathCache.delete(cacheKey);
+    pathCache.set(cacheKey, value);
+    return value;
+}
+
+function cachePath(cacheKey, value) {
+    if (pathCache.has(cacheKey)) pathCache.delete(cacheKey);
+    pathCache.set(cacheKey, value);
+    if (pathCache.size > PATH_CACHE_LIMIT) {
+        pathCache.delete(pathCache.keys().next().value);
+    }
+}
+
+function getRouteGraph() {
+    if (routeGraphCache) return routeGraphCache;
+
+    const stopById = new Map();
+    const adjacency = new Map();
+    stops.forEach(stop => {
+        if (!stop) return;
+        const id = String(stop.id);
+        stopById.set(id, stop);
+        adjacency.set(id, new Map());
+    });
+
+    // Každý sousední pár na lince přidáme do grafu jen jednou.
+    lines.forEach(line => {
+        if (!line || !Array.isArray(line.stops)) return;
+        for (let i = 0; i < line.stops.length - 1; i++) {
+            const a = line.stops[i];
+            const b = line.stops[i + 1];
+            if (!a || !b || !a.latlng || !b.latlng) continue;
+            const aId = String(a.id);
+            const bId = String(b.id);
+            if (!adjacency.has(aId)) adjacency.set(aId, new Map());
+            if (!adjacency.has(bId)) adjacency.set(bId, new Map());
+            const distance = map.distance(a.latlng, b.latlng);
+            adjacency.get(aId).set(bId, distance);
+            adjacency.get(bId).set(aId, distance);
+        }
+    });
+
+    routeGraphCache = { stopById, adjacency };
+    return routeGraphCache;
 }
 
 function getNearbyStopsByStop() {
@@ -1150,81 +1206,65 @@ function getShortestPathDijkstra(startStopId, targetStopId) {
     // -------------------------------------------------------------
     // A) KONTROLA CACHE
     // -------------------------------------------------------------
-    let cacheKey = `${startId}->${targetId}`;
-    if (pathCache[cacheKey] !== undefined) {
-        return pathCache[cacheKey]; // Vrátí uloženou trusu (nebo null, pokud neexistuje)
+    const cacheKey = `${startId}->${targetId}`;
+    const cachedPath = getCachedPath(cacheKey);
+    if (cachedPath !== undefined) return cachedPath;
+
+    const { stopById, adjacency } = getRouteGraph();
+    if (!stopById.has(startId) || !stopById.has(targetId)) {
+        cachePath(cacheKey, null);
+        return null;
     }
 
-    let distances = {};
-    let previous = {};
-    let unvisited = new Set();
+    const distances = new Map();
+    const previous = new Map();
+    const unvisited = new Set(stopById.keys());
 
-    stops.forEach(s => {
-        if (!s) return;
-        let idStr = String(s.id);
-        distances[idStr] = Infinity;
-        previous[idStr] = null;
-        unvisited.add(idStr);
+    unvisited.forEach(id => {
+        distances.set(id, Infinity);
+        previous.set(id, null);
     });
+    distances.set(startId, 0);
 
-    distances[startId] = 0;
-
+    // Graf sousednosti se sestaví jednou na změnu sítě; při hledání už neprocházíme všechny linky.
     while (unvisited.size > 0) {
         let currentId = null;
         let minDist = Infinity;
-
         unvisited.forEach(id => {
-            if (distances[id] < minDist) {
-                minDist = distances[id];
+            const distance = distances.get(id);
+            if (distance < minDist) {
+                minDist = distance;
                 currentId = id;
             }
         });
 
         if (currentId === null || minDist === Infinity || currentId === targetId) break;
-
         unvisited.delete(currentId);
-        let currentStop = stops.find(s => s && String(s.id) === currentId);
-        if (!currentStop || !currentStop.latlng) continue;
 
-        let neighbors = [];
-        lines.forEach(line => {
-            if (!line || !line.stops) return;
-            let idx = line.stops.findIndex(s => s && String(s.id) === currentId);
-            if (idx !== -1) {
-                if (idx > 0 && line.stops[idx - 1]) neighbors.push(line.stops[idx - 1]);
-                if (idx < line.stops.length - 1 && line.stops[idx + 1]) neighbors.push(line.stops[idx + 1]);
-            }
-        });
-
-        neighbors.forEach(neighborStop => {
-            if (!neighborStop || !neighborStop.latlng) return;
-            let neighborId = String(neighborStop.id);
-            if (unvisited.has(neighborId)) {
-                let dist = map.distance(currentStop.latlng, neighborStop.latlng); 
-                let alt = distances[currentId] + dist;
-
-                if (alt < distances[neighborId]) {
-                    distances[neighborId] = alt;
-                    previous[neighborId] = currentId;
-                }
+        const neighbors = adjacency.get(currentId);
+        if (!neighbors) continue;
+        neighbors.forEach((edgeDistance, neighborId) => {
+            if (!unvisited.has(neighborId)) return;
+            const alt = minDist + edgeDistance;
+            if (alt < distances.get(neighborId)) {
+                distances.set(neighborId, alt);
+                previous.set(neighborId, currentId);
             }
         });
     }
 
-    let path = [];
-    let curr = targetId;
-    while (curr !== null) {
-        path.unshift(curr);
-        curr = previous[curr];
+    let result = null;
+    if (distances.get(targetId) !== Infinity) {
+        const path = [];
+        let currentId = targetId;
+        while (currentId !== null) {
+            path.unshift(currentId);
+            currentId = previous.get(currentId);
+        }
+        if (path[0] === startId) result = path;
     }
 
-    let result = (path[0] === startId) ? path : null;
-
-    // -------------------------------------------------------------
-    // B) ULOŽENÍ VÝSLEDKU DO CACHE
-    // -------------------------------------------------------------
-    pathCache[cacheKey] = result;
-
+    cachePath(cacheKey, result);
     return result;
 }
 
