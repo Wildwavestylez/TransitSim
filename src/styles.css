@@ -262,3 +262,23 @@ h1 {
   .map-label { top: 10px; left: 10px; padding: 10px 12px; }
   .topbar-status { font-size: 10px; }
 }
+
+
+/* Interactive infrastructure tools */
+.tool-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.tool-button, .tool-select {
+  min-width: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 9px;
+  padding: 10px 9px; background: rgba(255,255,255,.045); color: #dce6ef;
+  font-size: 11px; font-weight: 650; cursor: pointer;
+}
+.tool-button:hover { background: rgba(255,255,255,.09); }
+.tool-button.active { color: #10221f; background: #57d6b2; border-color: #57d6b2; }
+.tool-button.danger { color: #ffb6b6; }
+.tool-select { width: 100%; background: #202d39; }
+.field-label { color: #9eacba; font-size: 10px; margin: 2px 0 -5px; }
+.tool-message { margin: 0; color: #a8b5c4; font-size: 10px; line-height: 1.55; min-height: 30px; }
+.leaflet-interactive { transition: fill .12s ease, stroke .12s ease; }
+@media (max-width: 720px) {
+  .build-tools { gap: 7px; }
+  .tool-button, .tool-select { padding: 8px 7px; font-size: 10px; }
+}
