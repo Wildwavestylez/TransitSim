@@ -305,3 +305,57 @@ h1 {
   .map-panel { min-height: 0; }
   .map-label { top: 8px; left: 8px; }
 }
+
+
+/* TransitSim map-first shell adapted from World/Ostrava.html */
+#app, .workspace, .map-panel, #map { width: 100%; height: 100%; min-height: 0; }
+#app { position: relative; overflow: hidden; }
+.workspace { position: absolute; inset: 0; display: block; padding: 0; }
+.map-panel { position: absolute; inset: 0; z-index: 1; }
+#map { position: absolute; inset: 0; background: #dce5e1; }
+.topbar { display: none; }
+.hamburger-btn {
+  position: absolute; z-index: 1200; top: 14px; left: 14px; width: 48px; height: 48px;
+  display: grid; place-items: center; border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px; background: #17232d; color: #f3f7fa; font-size: 23px;
+  box-shadow: 0 6px 22px rgba(0,0,0,.28); cursor: pointer;
+}
+.hamburger-btn:hover { background: #253541; }
+.sidebar {
+  position: absolute; z-index: 1300; inset: 0 auto 0 0; width: min(360px, calc(100vw - 48px));
+  display: flex; flex-direction: column; gap: 18px; overflow-y: auto;
+  padding: 26px 20px 18px; background: rgba(16,24,32,.97); color: #eaf0f5;
+  border-right: 1px solid rgba(255,255,255,.12); box-shadow: 16px 0 42px rgba(0,0,0,.28);
+  transform: translateX(-110%); transition: transform .22s ease; visibility: hidden;
+}
+.sidebar.open { transform: translateX(0); visibility: visible; }
+.menu-backdrop {
+  position: absolute; inset: 0; z-index: 1250; background: rgba(3,9,14,.42);
+  opacity: 0; visibility: hidden; transition: opacity .2s ease;
+}
+.menu-backdrop.open { opacity: 1; visibility: visible; }
+.close-menu {
+  position: absolute; top: 12px; right: 14px; width: 36px; height: 36px;
+  border: 0; border-radius: 9px; background: rgba(255,255,255,.08); color: #f2f6f8;
+  font-size: 26px; cursor: pointer;
+}
+.sidebar .eyebrow { padding-right: 38px; }
+.map-label {
+  position: absolute; z-index: 500; top: 14px; left: 74px; pointer-events: none;
+  max-width: min(300px, calc(100vw - 100px)); padding: 12px 16px; border-radius: 12px;
+  background: rgba(16,24,32,.91); border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 8px 28px rgba(0,0,0,.2); backdrop-filter: blur(10px);
+}
+.map-label strong { display: block; color: #f5f8fc; font-size: 17px; }
+.map-label > span:last-child { display: block; color: #a7b4c2; font-size: 10px; line-height: 1.5; }
+.map-label-kicker { display: block; color: #57d6b2; font-size: 9px; letter-spacing: .14em; margin-bottom: 3px; }
+.leaflet-control-zoom { margin-bottom: 22px !important; margin-right: 14px !important; }
+.leaflet-control-zoom a {
+  background: #17232d !important; color: #f3f7fa !important; border-color: rgba(255,255,255,.12) !important;
+}
+.leaflet-control-attribution { font-size: 10px !important; }
+@media (max-width: 720px) {
+  .hamburger-btn { top: 10px; left: 10px; width: 44px; height: 44px; }
+  .map-label { top: 10px; left: 62px; padding: 9px 11px; }
+  .map-label strong { font-size: 14px; }
+}
