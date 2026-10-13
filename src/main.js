@@ -15,16 +15,7 @@ if (mapElement) {
     maxZoom: 19,
   }).addTo(map);
 
-  const railwayLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-    attribution: 'Železniční vrstva © OpenRailwayMap contributors',
-    minZoom: 2,
-    maxZoom: 19,
-    opacity: 0.82,
-  }).addTo(map);
-  const baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
-  });
-  L.control.layers({ 'OpenStreetMap': baseMap }, { 'Železnice': railwayLayer }, { collapsed: true, position: 'topright' }).addTo(map);
+
 
   let network = createNetwork();
   let tool = 'node';
@@ -40,6 +31,19 @@ if (mapElement) {
   const count = document.querySelector('#network-count');
   const hint = document.querySelector('#network-hint');
 
+  const sidebar = document.querySelector('#sidebar');
+  const hamburger = document.querySelector('#hamburger-btn');
+  const closeMenu = document.querySelector('#close-menu');
+  const backdrop = document.querySelector('#menu-backdrop');
+  const setMenuOpen = (open) => {
+    sidebar.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+    hamburger.setAttribute('aria-expanded', String(open));
+    hamburger.setAttribute('aria-label', open ? 'Zavřít menu' : 'Otevřít menu');
+  };
+  hamburger.addEventListener('click', () => setMenuOpen(!sidebar.classList.contains('open')));
+  closeMenu.addEventListener('click', () => setMenuOpen(false));
+  backdrop.addEventListener('click', () => setMenuOpen(false));
   const setMessage = (text) => { message.textContent = text; };
   const persist = () => {
     try {
