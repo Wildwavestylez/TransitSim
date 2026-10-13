@@ -12,6 +12,7 @@
   </head>
   <body>
     <div id="app">
+      <button id="hamburger-btn" class="hamburger-btn" type="button" aria-label="Otevřít menu" aria-expanded="false">☰</button>
       <header class="topbar">
         <a class="brand" href="/" aria-label="TransitSim domů">
           <span class="brand-mark" aria-hidden="true">T</span>
@@ -24,8 +25,10 @@
       </header>
 
       <main class="workspace">
-        <aside class="sidebar" aria-label="Ovládání simulátoru">
-          <p class="eyebrow">NOVÝ DOPRAVNÍ SIMULÁTOR</p>
+        <div id="menu-backdrop" class="menu-backdrop"></div>
+        <aside id="sidebar" class="sidebar" aria-label="Ovládání simulátoru">
+          <button id="close-menu" class="close-menu" type="button" aria-label="Zavřít menu">×</button>
+          <p class="eyebrow">DOPRAVNÍ SIMULÁTOR</p>
           <h1>Postav si vlastní dopravní síť.</h1>
           <p class="intro">
             Klikni do mapy a polož uzly infrastruktury. Vyber dva uzly a propojíš je úsekem sítě.
@@ -87,9 +90,9 @@
         <section class="map-panel" aria-label="Mapa pro stavbu dopravní infrastruktury">
           <div id="map" role="application" aria-label="Interaktivní mapa"></div>
           <div class="map-label">
-            <span class="map-label-kicker">MAPOVÝ NÁHLED</span>
+            <span class="map-label-kicker">TRANSITSIM</span>
             <strong>Česká republika</strong>
-            <span>OpenStreetMap + železniční vrstva · kliknutím stavíš</span>
+            <span>Mapa světa · stavba dopravní sítě</span>
           </div>
           <div class="map-attribution-note">
             Mapové podklady © OpenStreetMap contributors
