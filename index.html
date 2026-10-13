@@ -1,105 +1,1585 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="cs">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101820" />
-    <meta
-      name="description"
-      content="TransitSim — modulární simulátor městské a regionální dopravy."
-    />
-    <title>TransitSim — Transport Simulation</title>
-  </head>
-  <body>
-    <div id="app">
-      <button id="hamburger-btn" class="hamburger-btn" type="button" aria-label="Otevřít menu" aria-expanded="false">☰</button>
-      <header class="topbar">
-        <a class="brand" href="/" aria-label="TransitSim domů">
-          <span class="brand-mark" aria-hidden="true">T</span>
-          <span>TransitSim</span>
-        </a>
-        <div class="topbar-status">
-          <span class="status-dot" aria-hidden="true"></span>
-          Stavba infrastruktury
-        </div>
-      </header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Tram-Train Simulator Pro</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e24; color: #fff; overflow: hidden; }
 
-      <main class="workspace">
-        <div id="menu-backdrop" class="menu-backdrop"></div>
-        <aside id="sidebar" class="sidebar" aria-label="Ovládání simulátoru">
-          <button id="close-menu" class="close-menu" type="button" aria-label="Zavřít menu">×</button>
-          <p class="eyebrow">DOPRAVNÍ SIMULÁTOR</p>
-          <h1>Postav si vlastní dopravní síť.</h1>
-          <p class="intro">
-            Klikni do mapy a polož uzly infrastruktury. Vyber dva uzly a propojíš je úsekem sítě.
-          </p>
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
-          <section class="panel-section">
-            <h2>Vývojový stav</h2>
-            <div class="status-card">
-              <span class="status-icon" aria-hidden="true">✓</span>
-              <div>
-                <strong>Interaktivní mapa</strong>
-                <p>Uzly, úseky a ukládání do tohoto prohlížeče</p>
-              </div>
-            </div>
-            <div class="status-card">
-              <span class="status-icon pending" aria-hidden="true">○</span>
-              <div>
-                <strong id="network-count">Síť je prázdná</strong>
-                <p id="network-hint">Zvol nástroj a začni stavět</p>
-              </div>
-            </div>
-          </section>
+        #top-bar {
+            position: absolute; top: 15px; left: 15px; right: 15px; z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+        }
 
-          <section class="panel-section build-tools">
-            <h2>Stavba infrastruktury</h2>
-            <div class="tool-buttons">
-              <button id="tool-node" class="tool-button active" type="button">＋ Přidat uzel</button>
-              <button id="tool-edge" class="tool-button" type="button">↔ Propojit uzly</button>
-            </div>
-            <label class="field-label" for="network-mode">Typ infrastruktury</label>
-            <select id="network-mode" class="tool-select">
-              <option value="tram">Tramvajová trať</option>
-              <option value="bus">Autobusová trasa</option>
-              <option value="rail">Železnice</option>
-            </select>
-            <div class="tool-buttons">
-              <button id="tool-delete" class="tool-button danger" type="button">Mazat úseky</button>
-              <button id="tool-reset" class="tool-button" type="button">Nová síť</button>
-            </div>
-            <p id="tool-message" class="tool-message" role="status">Klikni do mapy a přidej první uzel.</p>
-          </section>
+        .hud-card {
+            background: rgba(17, 17, 22, 0.9); backdrop-filter: blur(8px);
+            padding: 10px 18px; border-radius: 8px; border: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: auto; font-weight: bold;
+            display: flex; gap: 10px; align-items: center;
+        }
 
-          <section class="panel-section">
-            <h2>Principy hry</h2>
-            <ul class="principles">
-              <li>Skutečná geografie</li>
-              <li>Upravitelná infrastruktura</li>
-              <li>Trasy respektující síť</li>
-              <li>Testovatelné herní jádro</li>
-            </ul>
-          </section>
+#stats-box {
+    display: flex;
+    flex-direction: column; /* Hodnoty půjdou pod sebe */
+    justify-content: center;
+    gap: 3px; /* Malá mezera mezi řádky */
+    padding: 4px 10px;
+    white-space: nowrap; /* Zabrání nechtěnému zalamování textu */
+}
 
-          <footer class="sidebar-footer">
-            <span>TransitSim</span>
-            <span>Verze 0.2 · Stavba sítě</span>
-          </footer>
-        </aside>
+#stats-box div {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* Mezera mezi ikonou a číslem */
+    font-size: 13px; /* Můžeš upravit podle chuti, aby to sedělo k penězům */
+}
 
-        <section class="map-panel" aria-label="Mapa pro stavbu dopravní infrastruktury">
-          <div id="map" role="application" aria-label="Interaktivní mapa"></div>
-          <div class="map-label">
-            <span class="map-label-kicker">TRANSITSIM</span>
-            <strong>Česká republika</strong>
-            <span>Mapa světa · stavba dopravní sítě</span>
-          </div>
-          <div class="map-attribution-note">
-            Mapové podklady © OpenStreetMap contributors
-          </div>
-        </section>
-      </main>
+
+        #balance-box { color: #2ecc71; font-size: 16px; }
+
+        #hamburger-btn {
+            background: #2a2a35; color: #fff; border: 1px solid #444;
+            padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px;
+            pointer-events: auto; transition: background 0.2s;
+        }
+        #hamburger-btn:hover { background: #3a3a48; }
+
+        #sidebar {
+            position: absolute; top: 0; left: -380px; width: 370px; height: 100vh;
+            background: rgba(24, 24, 29, 0.95); backdrop-filter: blur(10px); z-index: 1001;
+            padding: 20px; box-shadow: 5px 0 25px rgba(0,0,0,0.7);
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; gap: 15px; overflow-y: auto;
+        }
+
+        #sidebar.open { left: 0; }
+
+        .close-btn { align-self: flex-end; background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; }
+        .close-btn:hover { color: #fff; }
+
+        .tab-nav { display: flex; gap: 5px; background: #111116; padding: 5px; border-radius: 6px; }
+        .tab-btn { flex: 1; padding: 8px; background: none; border: none; color: #888; cursor: pointer; font-weight: 600; font-size: 11px; border-radius: 4px; }
+        .tab-btn.active { background: #2a2a35; color: #fff; }
+
+        .tab-content { display: none; flex-direction: column; gap: 10px; }
+        .tab-content.active { display: flex; }
+
+        .tool-btn {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; padding: 12px; background: #2a2a35; color: #fff;
+            border: 2px solid transparent; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 600;
+        }
+        .tool-btn:hover { background: #3a3a48; }
+        .tool-btn.active { border-color: #3498db; background: #1f3a52; }
+
+        .undo-btn {
+            background: #e67e22; color: white; border: none; padding: 8px;
+            border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;
+            display: none; transition: background 0.2s;
+        }
+        .undo-btn:hover { background: #d35400; }
+
+        .price-tag { font-size: 11px; color: #f1c40f; }
+
+        .item-card { background: #22222a; padding: 12px; border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column; gap: 6px; }
+        .action-btn { background: #27ae60; color: #fff; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .action-btn:hover { background: #2ecc71; }
+        .danger-btn { background: #c0392b; color: #fff; border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .danger-btn:hover { background: #e74c3c; }
+
+        .stop-marker { background: #e74c3c; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.8); cursor: pointer; }
+
+        .train-img-marker {
+            width: 40px; height: 24px; border-radius: 4px; object-fit: cover;
+            border: 2px solid #fff; box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            background: #000; cursor: pointer;
+        }
+
+        .track-node { background: #ffffff; width: 6px; height: 6px; border-radius: 50%; border: 1px solid #000; }
+        .hidden-node { display: none !important; }
+
+/* Posuvník pro popup okna vlaků a stanic */
+.passenger-scroll-list {
+    max-height: 180px; /* cca 8-10 řádků */
+    overflow-y: auto;
+    margin-top: 5px;
+    padding-right: 5px;
+}
+
+/* Jemné přizpůsobení posuvníku pro moderní vzhled */
+.passenger-scroll-list::-webkit-scrollbar {
+    width: 5px;
+}
+.passenger-scroll-list::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+}
+
+
+        .passenger-float-info {
+            background: rgba(0, 0, 0, 0.85);
+            color: #2ecc71;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid #2ecc71;
+            white-space: nowrap;
+            animation: floatUp 2s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+
+        .save-controls { display: flex; gap: 5px; margin-top: auto; padding-top: 10px; border-top: 1px solid #333; }
+        .save-btn { flex: 1; padding: 8px; font-size: 11px; background: #34495e; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        .save-btn:hover { background: #4e6d8c; }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+    <button id="hamburger-btn" onclick="toggleSidebar()">☰ Menu</button>
+
+    <!-- Změna: Statistiky rozdělené do dvojsloupcového/vertikálního bloku -->
+    <div class="hud-card" id="stats-box" style="display: flex; flex-direction: column; gap: 4px; padding: 4px 10px;">
+        <div id="stats-passengers">👥 <span id="passengers-val">0</span></div>
+        <div id="stats-km">🚆 <span id="km-val">0.0</span> km</div>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+    <div class="hud-card" id="balance-box">350 000 000 Kč</div>
+</div>
+
+
+        <div id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">✕</button>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('build')">🔨 Stavba</button>
+            <button class="tab-btn" onclick="switchTab('fleet')">DEP DEPO</button>
+            <button class="tab-btn" onclick="switchTab('lines')">🗺️ Linky</button>
+        </div>
+
+        <div id="tab-build" class="tab-content active">
+            <button class="tool-btn active" id="btn-select" onclick="setMode('select')">🖐️ Prohlížení</button>
+            <button class="tool-btn" id="btn-track" onclick="setMode('track')">🛤️ Koleje <span class="price-tag">15M / km</span></button>
+            <button class="tool-btn" id="btn-tunnel" onclick="setMode('tunnel')">🚇 Tunel <span class="price-tag">80M / km</span></button>
+            <button class="tool-btn" id="btn-stop" onclick="setMode('stop')">🚏 Zastávka <span class="price-tag">5M Kč</span></button>
+            <button class="tool-btn" id="btn-demolish" onclick="setMode('demolish')">🗑️ Zbourat kolej <span class="price-tag">Vrátí 50%</span></button>
+
+            <button id="btn-undo-track" class="undo-btn" onclick="undoLastTrack()">↩️ Zpět (poslední kolej)</button>
+            <button id="btn-undo-stop" class="undo-btn" onclick="undoLastStop()">↩️ Zpět (poslední zastávka)</button>
+        </div>
+
+        <div id="tab-fleet" class="tab-content">
+            <h4>Koupit nové vozidlo:</h4>
+            <div id="vehicle-shop"></div>
+            <h4>Vlastněná vozidla (<span id="train-count">0</span>):</h4>
+            <div id="owned-trains-list"></div>
+        </div>
+
+        <div id="tab-lines" class="tab-content">
+            <button class="action-btn" style="background:#3498db;" onclick="startLineCreation()">➕ Vytvořit novou linku</button>
+
+            <div id="line-creation-info" style="display:none; font-size:12px; color:#f1c40f; background:#222; padding:8px; border-radius:4px;">
+                Klikáním na zastávky vytvoř trasu.
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <button class="action-btn" style="background:#e67e22; flex:1;" onclick="undoLastLineStop()">↩️ Zpět (stanice)</button>
+                    <button class="action-btn" style="background:#2ecc71; flex:1;" onclick="finishLineCreation()">Dokončit linku</button>
+                </div>
+            </div>
+
+            <h4>Aktivní linky:</h4>
+            <div id="lines-list"></div>
+        </div>
+
+        <div class="save-controls">
+            <button class="save-btn" onclick="saveGame()">💾 Uložit</button>
+            <button class="save-btn" onclick="loadGame()">📂 Načíst</button>
+            <button class="save-btn" style="background:#c0392b;" onclick="resetGame()">🗑️ Reset</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const LINE_COLORS = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#fd79a8'];
+
+        const VEHICLE_TYPES = [
+    { id: 'citylink', series: '959', name: 'Stadler Citylink', speed: 80, capacity: 120, price: 5000000, img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=100&auto=format&fit=crop&q=60' },
+    { id: 't3', series: '150', name: 'Tatra T3R.EV / Trio', speed: 60, capacity: 75, price: 2000000, img: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=100&auto=format&fit=crop&q=60' },
+    { id: 'panter', series: '440', name: 'RegioPanter', speed: 120, capacity: 200, price: 8000000, img: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=100&auto=format&fit=crop&q=60' }
+];
+
+
+        const map = L.map('map', { zoomControl: false }).setView([49.0583, 13.7825], 13);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        let balance = 350000000;
+       let totalPassengersTransported = 0;
+         let totalDistanceTraveledKm = 0;
+
+        let currentMode = 'select';
+        let trackStartPoint = null;
+        let tempStartMarker = null;
+
+        const COST_TRACK_KM = 1500000;
+        const COST_TUNNEL_KM = 8000000;
+        const COST_STOP = 500000;
+        const SNAP_RADIUS_METERS = 30;
+
+        let stops = [];
+        let trains = [];
+        let lines = [];
+        let nodes = []; 
+        let trackSegments = [];
+        let tempLineStops = [];
+        let isCreatingLine = false;
+
+        let extendingLine = null;
+        let extendPosition = null; 
+
+       // Globální cache pro uložení již spočítaných tras
+let pathCache = {};
+
+// Funkce pro reset paměti – zvolej ji vždy při změně sítě!
+function clearPathCache() {
+    pathCache = {};
+}
+
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            if (tempStartMarker) { map.removeLayer(tempStartMarker); tempStartMarker = null; }
+            trackStartPoint = null;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            // Zobrazení tlačítka Undo podle vybraného nástroje
+            document.getElementById('btn-undo-track').style.display = (mode === 'track' || mode === 'tunnel') ? 'block' : 'none';
+            document.getElementById('btn-undo-stop').style.display = (mode === 'stop') ? 'block' : 'none';
+
+            let nodeElements = document.querySelectorAll('.track-node');
+            nodeElements.forEach(el => {
+                if (currentMode === 'select') {
+                    el.classList.add('hidden-node');
+                } else {
+                    el.classList.remove('hidden-node');
+                }
+            });
+        }
+
+function updateStatsUI() {
+    let passengersElem = document.getElementById('passengers-val');
+    let kmElem = document.getElementById('km-val');
+
+    if (passengersElem && kmElem) {
+        passengersElem.innerText = totalPassengersTransported.toLocaleString();
+        kmElem.innerText = totalDistanceTraveledKm.toFixed(1);
+    }
+}
+
+
+
+        function getSnappedLatLng(latlng) {
+            let closestPoint = latlng;
+            let minDistance = SNAP_RADIUS_METERS;
+
+            nodes.forEach(node => {
+                let dist = map.distance(latlng, node);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestPoint = node;
+                }
+            });
+
+            stops.forEach(stop => {
+                let dist = map.distance(latlng, stop.latlng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestPoint = stop.latlng;
+                }
+            });
+
+            return closestPoint;
+        }
+
+        map.on('click', function(e) {
+            let snappedLatLng = getSnappedLatLng(e.latlng);
+
+            if (currentMode === 'track' || currentMode === 'tunnel') {
+                handleLineBuilding(snappedLatLng, currentMode === 'tunnel');
+            } else if (currentMode === 'stop') {
+                buildStop(snappedLatLng);
+            }
+        });
+
+        function addNodeMarker(latlng) {
+            let exists = nodes.some(n => map.distance(n, latlng) < 1);
+            if (!exists) {
+                nodes.push(latlng);
+                let isHidden = currentMode === 'select' ? 'hidden-node' : '';
+                L.marker(latlng, {
+                    icon: L.divIcon({ className: `track-node ${isHidden}` }),
+                    interactive: false
+                }).addTo(map);
+            }
+        }
+
+        function handleLineBuilding(latlng, isTunnel) {
+            if (!trackStartPoint) {
+                trackStartPoint = latlng;
+                tempStartMarker = L.circleMarker(latlng, { color: isTunnel ? '#9b59b6' : '#3498db', radius: 5 }).addTo(map);
+            } else {
+                let distKm = (map.distance(trackStartPoint, latlng)) / 1000;
+                let cost = Math.round(distKm * (isTunnel ? COST_TUNNEL_KM : COST_TRACK_KM));
+
+                if (balance < cost) {
+                    alert("Nedostatek financí!");
+                    if (tempStartMarker) map.removeLayer(tempStartMarker);
+                    trackStartPoint = null;
+                    return;
+                }
+
+                balance -= cost;
+
+                let polyline = L.polyline([trackStartPoint, latlng], {
+                    color: isTunnel ? '#9b59b6' : '#3498db',
+                    weight: isTunnel ? 4 : 5,
+                    dashArray: isTunnel ? '6, 6' : null
+                }).addTo(map);
+
+                let segmentObj = { id: Date.now(), start: trackStartPoint, end: latlng, polyline: polyline, isTunnel: isTunnel, cost: cost };
+                trackSegments.push(segmentObj);
+
+                polyline.on('click', () => {
+                    if (currentMode === 'demolish') {
+                        demolishSegment(segmentObj);
+                    }
+                });
+
+                addNodeMarker(trackStartPoint);
+                addNodeMarker(latlng);
+
+                if (tempStartMarker) map.removeLayer(tempStartMarker);
+                trackStartPoint = null;
+                autoSave();
+                updateUI();
+            }
+        }
+
+        function undoLastTrack() {
+            if (trackSegments.length === 0) return alert("Žádná postavená kolej ke zrušení!");
+            let lastSeg = trackSegments.pop();
+            map.removeLayer(lastSeg.polyline);
+            balance += lastSeg.cost; // Vracíme 100% ceny
+            autoSave();
+            updateUI();
+        }
+
+        function demolishSegment(segment) {
+            map.removeLayer(segment.polyline);
+            trackSegments = trackSegments.filter(s => s.id !== segment.id);
+            balance += Math.round(segment.cost * 0.5);
+            alert("Úsek kolejí zbourán, vrací se 50% financí.");
+            autoSave();
+            updateUI();
+        }
+
+        function buildStop(latlng) {
+            if (balance < COST_STOP) return alert("Nedostatek financí!");
+
+            balance -= COST_STOP;
+            let stopId = stops.length + 1;
+            let stopName = prompt("Název zastávky:", `Stanice ${stopId}`) || `Stanice ${stopId}`;
+
+            let marker = L.marker(latlng, {
+                icon: L.divIcon({ className: 'stop-marker' })
+            }).addTo(map);
+
+            marker.bindPopup('');
+
+            let stopObj = { 
+                id: stopId, 
+                name: stopName, 
+                latlng: latlng, 
+                marker: marker,
+                passengers: {} 
+            };
+
+            stops.push(stopObj);
+
+            marker.on('click', () => {
+                if (isCreatingLine || extendingLine) {
+                    marker.closePopup();
+                    onStopClick(stopObj);
+                } else {
+                    updateStopPopup(stopObj);
+                }
+            });
+
+            updateStopPopup(stopObj);
+            autoSave();
+            updateUI();
+        }
+
+        function undoLastStop() {
+            if (stops.length === 0) return alert("Žádná zastávka ke zrušení!");
+            let lastStop = stops.pop();
+            map.removeLayer(lastStop.marker);
+            balance += COST_STOP; // Vracíme 100% (5M)
+            autoSave();
+            updateUI();
+        }
+
+        function updateStopPopup(stopObj) {
+    if (!stopObj.marker) return;
+
+    let total = 0;
+    let targetCounts = [];
+
+    for (let targetId in stopObj.passengers) {
+        let passList = stopObj.passengers[targetId];
+        // Podpora pro pole i pro stará čísla
+        let count = Array.isArray(passList) ? passList.length : (passList || 0);
+        let targetStop = stops.find(s => s.id == targetId);
+
+        if (targetStop && count > 0) {
+            total += count;
+            targetCounts.push({ name: targetStop.name, count: count });
+        }
+    }
+
+    targetCounts.sort((a, b) => b.count - a.count);
+
+    let passHtml = '';
+    if (targetCounts.length > 0) {
+        passHtml = '<div class="passenger-scroll-list">';
+        targetCounts.forEach(item => {
+            passHtml += `➔ ${item.name}: <b>${item.count} lidí</b><br>`;
+        });
+        passHtml += '</div>';
+    } else {
+        passHtml = '<br><i style="color:#888;">Nástupiště je prázdné</i>';
+    }
+
+    let content = `
+        <b>🚏 ${stopObj.name}</b><br>
+        <hr style="border:0; border-top:1px solid #444; margin:5px 0;">
+        <span>Čeká celkem: <b>${total} cestujících</b></span>
+        <span style="font-size:11px; color:#aaa;">${passHtml}</span>
+    `;
+
+    stopObj.marker.setPopupContent(content);
+}
+
+// Generátor cestujících (Každých 15 sekund)
+setInterval(() => {
+    if (stops.length < 2) return;
+
+    const MAX_TRAVEL_DISTANCE_KM = 16; 
+
+    stops.forEach(stop => {
+        let reachableStops = stops.filter(target => {
+            if (target.id === stop.id) return false;
+            let distKm = map.distance(stop.latlng, target.latlng) / 1000;
+            return distKm <= MAX_TRAVEL_DISTANCE_KM;
+        });
+
+        if (reachableStops.length > 0) {
+            let target = reachableStops[Math.floor(Math.random() * reachableStops.length)];
+            let newPassengersCount = Math.floor(Math.random() * 10) + 3;
+
+            stop.passengers[target.id] = stop.passengers[target.id] || [];
+
+            // Přidáme cestující jako objekty, aby si nesli svou cestu
+            for (let i = 0; i < newPassengersCount; i++) {
+                stop.passengers[target.id].push({
+                    targetId: target.id,
+                    path: null // Spočítá se jim automaticky při prvním nástupu
+                });
+            }
+
+            updateStopPopup(stop);
+        }
+    });
+}, 25000);
+
+
+
+        function buyTrain(typeId) {
+    let vType = VEHICLE_TYPES.find(v => v.id === typeId);
+    if (balance < vType.price) return alert("Nemáš dostatek peněz!");
+
+    balance -= vType.price;
+
+    // Spočítáme, kolik vlaků stejného typu už máme, a vygenerujeme např. 440-001
+    let sameTypeCount = trains.filter(t => t.model === vType.name).length + 1;
+    let formattedNum = String(sameTypeCount).padStart(3, '0');
+    let trainId = `${vType.series}-${formattedNum}`;
+
+    trains.push({ 
+        id: trainId, 
+        model: vType.name, 
+        speed: vType.speed,
+        capacity: vType.capacity,
+        price: vType.price, // Uložíme si nákupní cenu pro prodej!
+        img: vType.img,
+        assignedLine: null,
+        distanceKm: 0,
+        passengersOnBoard: [] 
+    });
+
+    autoSave();
+    updateUI();
+}
+
+function sellTrain(trainId) {
+    let train = trains.find(t => t.id === trainId);
+    if (!train) return;
+
+    let sellPrice = Math.floor((train.price || 10000000) * 0.7);
+
+    if (!confirm(`Opravdu chceš prodat vlak ${train.id} (${train.model}) za ${sellPrice.toLocaleString()} Kč?`)) {
+        return;
+    }
+
+    balance += sellPrice;
+
+    // Stáhneme ho z linky i mapy
+    unassignTrain(trainId);
+
+    // Odstraníme ze seznamu vlaků
+    trains = trains.filter(t => t.id !== trainId);
+
+    autoSave();
+    updateUI();
+    alert(`💰 Vlak ${train.id} byl prodán za ${sellPrice.toLocaleString()} Kč!`);
+}
+
+
+        function startLineCreation() {
+            isCreatingLine = true;
+            extendingLine = null;
+            tempLineStops = [];
+            document.getElementById('line-creation-info').style.display = 'block';
+            toggleSidebar();
+        }
+
+        function appendStopToLine(lineId, position) {
+            extendingLine = lines.find(l => l.id === lineId);
+            extendPosition = position;
+            isCreatingLine = false;
+
+            alert(`Klikni na zastávku na mapě, kterou chceš přidat na ${position === 'start' ? 'ZAČÁTEK' : 'KONEC'} linky ${extendingLine.name}.`);
+            toggleSidebar();
+        }
+
+        function onStopClick(stopObj) {
+    if (isCreatingLine) {
+        tempLineStops.push(stopObj);
+        alert(`Zastávka ${stopObj.name} přidána do nové linky.`);
+        return;
+    }
+
+    if (extendingLine) {
+        if (extendingLine.stops.some(s => s.id === stopObj.id)) {
+            alert("Tato zastávka už v lince je!");
+            return;
+        }
+
+        if (extendPosition === 'start') {
+            extendingLine.stops.unshift(stopObj);
+        } else {
+            extendingLine.stops.push(stopObj);
+        }
+
+        // Přepočítáme kompletní trasu (geometry path) linky
+        extendingLine.path = buildPathFromStops(extendingLine.stops);
+        redrawLinePolyline(extendingLine);
+
+        // Rozprostřeme vlaky na nové délce trati a restartujeme jejich pohyb v novém taktu
+        distributeTrainsEvenlyOnLine(extendingLine.id);
+        let lineTrains = trains.filter(t => t.assignedLine === extendingLine.id);
+        lineTrains.forEach(t => {
+            t.isMoving = false;
+            startTrainMovement(t, extendingLine);
+        });
+
+        alert(`Zastávka ${stopObj.name} byla úspěšně přidána!`);
+
+        extendingLine = null;
+        extendPosition = null;
+        autoSave();
+        updateUI();
+    }
+}
+
+        function buildPathFromStops(selectedStops) {
+            let fullPath = [];
+            for (let i = 0; i < selectedStops.length - 1; i++) {
+                let startPt = selectedStops[i].latlng;
+                let endPt = selectedStops[i+1].latlng;
+
+                let segmentPath = findTrackPath(startPt, endPt);
+                if (fullPath.length > 0 && segmentPath.length > 0) {
+                    segmentPath.shift();
+                }
+                fullPath = fullPath.concat(segmentPath);
+            }
+            return fullPath;
+        }
+
+        function findTrackPath(startLatLng, endLatLng) {
+            let queue = [[startLatLng]];
+            let visited = [];
+
+            while (queue.length > 0) {
+                let path = queue.shift();
+                let current = path[path.length - 1];
+
+                if (map.distance(current, endLatLng) < 20) {
+                    return path;
+                }
+
+                visited.push(current);
+
+                let neighbors = [];
+                trackSegments.forEach(seg => {
+                    if (map.distance(seg.start, current) < 20) neighbors.push(seg.end);
+                    if (map.distance(seg.end, current) < 20) neighbors.push(seg.start);
+                });
+
+                neighbors.forEach(neighbor => {
+                    if (!visited.some(v => map.distance(v, neighbor) < 20)) {
+                        queue.push([...path, neighbor]);
+                    }
+                });
+            }
+
+            return [startLatLng, endLatLng];
+        }
+
+        function finishLineCreation() {
+            if (tempLineStops.length < 2) return alert("Linka musí mít alespoň 2 zastávky!");
+
+            let lineId = lines.length + 1;
+            let lineName = prompt("Název linky:", `Linka L${lineId}`) || `Linka L${lineId}`;
+            let calculatedPath = buildPathFromStops(tempLineStops);
+            let color = LINE_COLORS[(lines.length) % LINE_COLORS.length];
+
+            let linePolyline = L.polyline(calculatedPath, { color: color, weight: 6, opacity: 0.8 }).addTo(map);
+
+            lines.push({ 
+                id: lineId, 
+                name: lineName, 
+                color: color,
+                stops: [...tempLineStops], 
+                path: calculatedPath,
+                polyline: linePolyline,
+                assignedTrains: [] 
+            });
+
+            isCreatingLine = false;
+            document.getElementById('line-creation-info').style.display = 'none';
+            autoSave();
+            updateUI();
+        }
+
+        function redrawLinePolyline(line) {
+            if (line.polyline) map.removeLayer(line.polyline);
+            line.polyline = L.polyline(line.path, { color: line.color, weight: 6, opacity: 0.8 }).addTo(map);
+        }
+
+        function assignTrainToLine(trainId, lineId) {
+            let train = trains.find(t => t.id === trainId);
+            let line = lines.find(l => l.id === lineId);
+            if (!train || !line) return;
+
+            if (train.assignedLine) {
+                let oldLine = lines.find(l => l.id === train.assignedLine);
+                if (oldLine) {
+                    oldLine.assignedTrains = oldLine.assignedTrains.filter(id => id !== train.id);
+                }
+            }
+
+            train.assignedLine = line.id;
+            line.assignedTrains.push(train.id);
+
+            let trainMarker = L.marker(line.path[0], {
+                icon: L.divIcon({ 
+                    className: 'train-img-icon', 
+                    html: `<img src="${train.img}" class="train-img-marker" style="border-color:${line.color};">` 
+                })
+            }).addTo(map);
+
+            train.marker = trainMarker;
+            trainMarker.bindPopup('');
+            trainMarker.on('click', () => updateTrainPopup(train));
+
+            let trainIndex = line.assignedTrains.length - 1;
+            startTrainMovement(train, line, trainIndex);
+
+            autoSave();
+            updateUI();
+        }
+
+        function updateTrainPopup(train) {
+    if (!train.marker) return;
+
+    let passCount = train.passengersOnBoard.length;
+
+    // Najdeme konkrétní linku pro zobrazení jejího JMÉNA místo ID
+    let currentLine = lines.find(l => l.id === train.assignedLine);
+    let lineName = currentLine ? currentLine.name : 'Žádná';
+
+    let sellPrice = Math.floor((train.price || 10000000) * 0.7);
+
+    let targetCounts = {};
+    train.passengersOnBoard.forEach(p => {
+        targetCounts[p.targetId] = (targetCounts[p.targetId] || 0) + 1;
+    });
+
+    let sortedTargets = Object.keys(targetCounts).map(targetId => {
+        let targetStop = stops.find(s => s.id == targetId);
+        return {
+            name: targetStop ? targetStop.name : `Stanice ${targetId}`,
+            count: targetCounts[targetId]
+        };
+    }).sort((a, b) => b.count - a.count);
+
+    let passDetailsHtml = '';
+    if (sortedTargets.length > 0) {
+        passDetailsHtml = '<div class="passenger-scroll-list">';
+        sortedTargets.forEach(item => {
+            passDetailsHtml += `➔ ${item.name}: <b>${item.count} lidí</b><br>`;
+        });
+        passDetailsHtml += '</div>';
+    } else {
+        passDetailsHtml = '<br><i style="color:#888;">Vlak je prázdný</i>';
+    }
+
+    let content = `
+        <b>🚆 Vozidlo ${train.id}</b><br>
+        <span>Typ: <b>${train.model}</b></span><br>
+        <span>Linka: <b>${lineName}</b></span><br>
+        <span>Najeto: <b>${train.distanceKm.toFixed(1)} km</b></span><br>
+        <hr style="border:0; border-top:1px solid #444; margin:5px 0;">
+        <span>Obsazenost: <b>${passCount} / ${train.capacity} os.</b></span>
+        <span style="font-size:11px; color:#aaa;">${passDetailsHtml}</span>
+        <hr style="border:0; border-top:1px solid #444; margin:8px 0;">
+        <button onclick="sellTrain('${train.id}')" class="danger-btn" style="width:100%;">
+            🗑️ Prodat vozidlo (+${sellPrice.toLocaleString()} Kč)
+        </button>
+    `;
+
+    train.marker.setPopupContent(content);
+}
+
+
+
+        function unassignTrain(trainId) {
+    let train = trains.find(t => t.id === trainId);
+    if (!train) return;
+
+    let oldLineId = train.assignedLine;
+
+    if (oldLineId) {
+        let oldLine = lines.find(l => l.id === oldLineId);
+        if (oldLine) {
+            oldLine.assignedTrains = oldLine.assignedTrains.filter(id => id !== train.id);
+        }
+    }
+
+    train.assignedLine = null;
+    train.isMoving = false;
+    if (train.marker) {
+        map.removeLayer(train.marker);
+        train.marker = null;
+    }
+
+    // Pokud na lince ještě nějaké vlaky zůstaly, znovu je rozprostřeme
+    if (oldLineId) {
+        distributeTrainsEvenlyOnLine(oldLineId);
+    }
+
+    autoSave();
+    updateUI();
+}
+
+        function assignTrainToLine(trainId, lineId) {
+    let train = trains.find(t => t.id === trainId);
+    let line = lines.find(l => l.id === lineId);
+    if (!train || !line) return;
+
+    if (train.assignedLine) {
+        let oldLine = lines.find(l => l.id === train.assignedLine);
+        if (oldLine) {
+            oldLine.assignedTrains = oldLine.assignedTrains.filter(id => id !== train.id);
+            distributeTrainsEvenlyOnLine(oldLine.id); // Přepočet staré linky
+        }
+    }
+
+    train.assignedLine = line.id;
+    if (!line.assignedTrains.includes(train.id)) {
+        line.assignedTrains.push(train.id);
+    }
+
+    if (!train.marker) {
+        let firstPt = line.path[0];
+        train.marker = L.marker([firstPt.lat, firstPt.lng], {
+            icon: L.divIcon({ 
+                className: 'train-img-icon', 
+                html: `<img src="${train.img}" class="train-img-marker" style="border-color:${line.color};">` 
+            })
+        }).addTo(map);
+
+        train.marker.bindPopup('');
+        train.marker.on('click', () => updateTrainPopup(train));
+    }
+
+    // 1. Rozprostřeme všechny vlaky na lince na nové pozice
+    distributeTrainsEvenlyOnLine(line.id);
+
+    // 2. Restartujeme pohyb pro VŠECHNY vlaky na téhle lince z jejich nových pozic
+    let lineTrains = trains.filter(t => t.assignedLine === line.id);
+    lineTrains.forEach(t => {
+        t.isMoving = false; // Zrušíme starou smyčku
+        startTrainMovement(t, line); // Spustíme od nové pozice
+    });
+
+    autoSave();
+    updateUI();
+}
+
+function initializeAllTrainPositions() {
+    lines.forEach(line => {
+        if (line.assignedTrains && line.assignedTrains.length > 0) {
+            distributeTrainsEvenlyOnLine(line.id);
+        }
+    });
+}
+
+
+function initMovement() {
+        // Pokud jde o načtení hry (nebo hromadný start), uděláme krásné rozestupy za sebou (např. 15 vteřin)
+        // Pokud je to ale nově přidaný vlak za chodu hry (trainIndex > 0 a už nějaké vlaky jedou), 
+        // můžeme mu dát buď krátký rozestup, nebo ho pustit ihned.
+        let delayMs = trainIndex * 50000; // 15 vteřin rozestup mezi vlaky
+
+        // Pojistka: Pokud už má vlak nějakou historii ujetých kilometrů z uložené hry, 
+        // neresetujeme ho násilím na začátek, ale necháme ho běžet.
+        setTimeout(() => {
+            moveSegment();
+        }, delayMs);
+    }
+
+function startTrainMovement(train, line) {
+    if (train.isMoving) return; // Zabrání zdvojení animace
+    train.isMoving = true;
+
+    function moveSegment() {
+        if (!train.assignedLine) {
+            train.isMoving = false;
+            return;
+        }
+
+        let currentPath = line.path;
+        let currentSeg = train.currentSegmentIndex !== undefined ? train.currentSegmentIndex : 0;
+        let direction = train.direction || 1;
+
+        let nextSeg = currentSeg + direction;
+
+        // Otočení na konečné
+        if (nextSeg >= currentPath.length || nextSeg < 0) {
+            direction *= -1;
+            train.direction = direction;
+            nextSeg = currentSeg + direction;
+        }
+
+        let startPt = currentPath[currentSeg];
+        let targetPt = currentPath[nextSeg];
+
+        if (!startPt || !targetPt) {
+            train.isMoving = false;
+            return;
+        }
+
+        let distanceKm = map.distance(startPt, targetPt) / 1000;
+        train.distanceKm = (train.distanceKm || 0) + distanceKm;
+        totalDistanceTraveledKm += distanceKm;
+
+        let durationMs = ((distanceKm / train.speed) * 3600 * 1000) / 5;
+        if (durationMs < 50) durationMs = 50;
+
+        let startTime = Date.now();
+
+        function animate() {
+            if (!train.assignedLine) {
+                train.isMoving = false;
+                return;
+            }
+
+            let elapsed = Date.now() - startTime;
+            let progress = Math.min(elapsed / durationMs, 1);
+
+            let currentLat = startPt.lat + (targetPt.lat - startPt.lat) * progress;
+            let currentLng = startPt.lng + (targetPt.lng - startPt.lng) * progress;
+
+            if (train.marker) train.marker.setLatLng([currentLat, currentLng]);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                train.currentSegmentIndex = nextSeg;
+                let currentStop = line.stops.find(stop => map.distance(stop.latlng, targetPt) < 20);
+
+                if (currentStop) {
+                    handlePassengerBoarding(train, currentStop, line, direction);
+                    setTimeout(moveSegment, 2000); 
+                } else {
+                    moveSegment();
+                }
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    moveSegment();
+}
+
+
+
+function distributeTrainsEvenlyOnLine(lineId) {
+    let line = lines.find(l => l.id == lineId);
+    let lineTrains = trains.filter(t => t.assignedLine == lineId);
+    if (!line || lineTrains.length === 0 || !line.path || line.path.length < 2) return;
+
+    // 1. Spočítáme vzdálenosti úseků trasy
+    let segDistances = [];
+    let totalLineMeters = 0;
+
+    for (let i = 0; i < line.path.length - 1; i++) {
+        let d = map.distance(line.path[i], line.path[i + 1]);
+        segDistances.push(d);
+        totalLineMeters += d;
+    }
+
+    if (totalLineMeters === 0) return;
+
+    // Celková délka trasy TAM i ZPĚT
+    let totalLoopMeters = totalLineMeters * 2;
+    let stepMeters = totalLoopMeters / lineTrains.length;
+
+    lineTrains.forEach((train, index) => {
+        // Cílová pozice vlaku na celém okruhu
+        let targetMeters = index * stepMeters;
+        let direction = 1;
+
+        // Pokud jsme v druhé polovině okruhu, vlak jede ZPĚT
+        if (targetMeters > totalLineMeters) {
+            targetMeters = totalLoopMeters - targetMeters; // Vzdálenost od startu směrem k cíli
+            direction = -1;
+        }
+
+        // 2. Najdeme přesný segment na trase
+        let accumulated = 0;
+        let segmentIndex = 0;
+
+        for (let i = 0; i < segDistances.length; i++) {
+            if (accumulated + segDistances[i] >= targetMeters) {
+                segmentIndex = i;
+                break;
+            }
+            accumulated += segDistances[i];
+            segmentIndex = i;
+        }
+
+        // Uložíme přesný stav
+        train.currentSegmentIndex = segmentIndex;
+        train.direction = direction;
+
+        // Okamžitě posuneme marker na odpovídající bod
+        let pt = line.path[segmentIndex];
+        if (pt && train.marker) {
+            train.marker.setLatLng([pt.lat, pt.lng]);
+        }
+    });
+}
+
+
+
+
+
+
+// 1. POMOCNÁ FUNKCE: Najde všechny stanice na NAŠÍ lince, které vedou k cíli (přímo, přes 1 přestup, nebo přes 2 přestupy)
+function getValidTransferStopsForTarget(ourLine, targetId) {
+    let validStops = [];
+
+    // A) Přímý cíl leží přímo na naší lince
+    if (ourLine.stops.some(s => s.id == targetId)) {
+        return [targetId];
+    }
+
+    // Všechny ostatní linky v síti (mimo naši)
+    let otherLines = lines.filter(l => l.id !== ourLine.id);
+
+    // Linky, které končí/prochází přímo cílovou stanicí
+    let targetLines = lines.filter(l => l.stops.some(s => s.id == targetId));
+
+    ourLine.stops.forEach(myStop => {
+        // B) 1. Přestup: Naše stanice přímo kříží cílovou linku
+        let isDirectTransfer = targetLines.some(tl => tl.stops.some(ts => ts.id == myStop.id));
+
+        if (isDirectTransfer) {
+            validStops.push(myStop.id);
+        } else {
+            // C) 2. Přestup: Naše stanice kříží "Mezilehlou linku", která se dál kříží s cílovou linkou!
+            // Zjistíme, jaké linky prochází naší stanicí
+            let connectingLines = otherLines.filter(l => l.stops.some(s => s.id == myStop.id));
+
+            let canReachTargetInTwoHops = connectingLines.some(connLine =>
+                targetLines.some(targetLine =>
+                    connLine.stops.some(cs => targetLine.stops.some(ts => ts.id == cs.id))
+                )
+            );
+
+            if (canReachTargetInTwoHops) {
+                validStops.push(myStop.id);
+            }
+        }
+    });
+
+    return validStops;
+}
+
+function undoLastLineStop() {
+    if (!isCreatingLine || tempLineStops.length === 0) return;
+    let removed = tempLineStops.pop();
+    alert(`🗑️ Odebrána zastávka: ${removed.name}`);
+}
+
+// Klávesová zkratka Backspace pro rychlé vracení stanic
+document.addEventListener('keydown', function(e) {
+    if (isCreatingLine && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault();
+        undoLastLineStop();
+    }
+});
+
+
+
+// 1. NEJKRATŠÍ CESTA (BFS) - Propojuje stanice podle všech existujících linek
+function getShortestPathStops(startStopId, targetStopId) {
+    if (startStopId === targetStopId) return [startStopId];
+
+    let queue = [[startStopId]];
+    let visited = new Set([startStopId]);
+
+    while (queue.length > 0) {
+        let path = queue.shift();
+        let currentId = path[path.length - 1];
+
+        if (currentId === targetStopId) return path;
+
+        let neighborIds = new Set();
+        lines.forEach(line => {
+            let idx = line.stops.findIndex(s => s.id === currentId);
+            if (idx !== -1) {
+                if (idx > 0) neighborIds.add(line.stops[idx - 1].id);
+                if (idx < line.stops.length - 1) neighborIds.add(line.stops[idx + 1].id);
+            }
+        });
+
+        neighborIds.forEach(nId => {
+            if (!visited.has(nId)) {
+                visited.add(nId);
+                queue.push([...path, nId]);
+            }
+        });
+    }
+
+    return null; // Propojení neexistuje
+}
+
+// 1. Dijkstrův algoritmus – najde nejkratší cestu sítí (přes všechny linky) podle kilometrové vzdálenosti
+function getShortestPathDijkstra(startStopId, targetStopId) {
+    let startId = String(startStopId);
+    let targetId = String(targetStopId);
+
+    if (startId === targetId) return [startId];
+
+    // -------------------------------------------------------------
+    // A) KONTROLA CACHE
+    // -------------------------------------------------------------
+    let cacheKey = `${startId}->${targetId}`;
+    if (pathCache[cacheKey] !== undefined) {
+        return pathCache[cacheKey]; // Vrátí uloženou trusu (nebo null, pokud neexistuje)
+    }
+
+    let distances = {};
+    let previous = {};
+    let unvisited = new Set();
+
+    stops.forEach(s => {
+        if (!s) return;
+        let idStr = String(s.id);
+        distances[idStr] = Infinity;
+        previous[idStr] = null;
+        unvisited.add(idStr);
+    });
+
+    distances[startId] = 0;
+
+    while (unvisited.size > 0) {
+        let currentId = null;
+        let minDist = Infinity;
+
+        unvisited.forEach(id => {
+            if (distances[id] < minDist) {
+                minDist = distances[id];
+                currentId = id;
+            }
+        });
+
+        if (currentId === null || minDist === Infinity || currentId === targetId) break;
+
+        unvisited.delete(currentId);
+        let currentStop = stops.find(s => s && String(s.id) === currentId);
+        if (!currentStop || !currentStop.latlng) continue;
+
+        let neighbors = [];
+        lines.forEach(line => {
+            if (!line || !line.stops) return;
+            let idx = line.stops.findIndex(s => s && String(s.id) === currentId);
+            if (idx !== -1) {
+                if (idx > 0 && line.stops[idx - 1]) neighbors.push(line.stops[idx - 1]);
+                if (idx < line.stops.length - 1 && line.stops[idx + 1]) neighbors.push(line.stops[idx + 1]);
+            }
+        });
+
+        neighbors.forEach(neighborStop => {
+            if (!neighborStop || !neighborStop.latlng) return;
+            let neighborId = String(neighborStop.id);
+            if (unvisited.has(neighborId)) {
+                let dist = map.distance(currentStop.latlng, neighborStop.latlng); 
+                let alt = distances[currentId] + dist;
+
+                if (alt < distances[neighborId]) {
+                    distances[neighborId] = alt;
+                    previous[neighborId] = currentId;
+                }
+            }
+        });
+    }
+
+    let path = [];
+    let curr = targetId;
+    while (curr !== null) {
+        path.unshift(curr);
+        curr = previous[curr];
+    }
+
+    let result = (path[0] === startId) ? path : null;
+
+    // -------------------------------------------------------------
+    // B) ULOŽENÍ VÝSLEDKU DO CACHE
+    // -------------------------------------------------------------
+    pathCache[cacheKey] = result;
+
+    return result;
+}
+
+
+
+function handlePassengerBoarding(train, stop, line, direction) {
+    if (!train || !stop || !line) return;
+
+    let currentStopIndex = line.stops.findIndex(s => s && String(s.id) === String(stop.id));
+    if (currentStopIndex === -1) return;
+
+    // 1. Zjistíme, zda jsme na konečné (začátek nebo konec trati)
+    let isTerminus = (currentStopIndex === 0 || currentStopIndex === line.stops.length - 1);
+
+    // 2. OPRAVA KONEČNÝCH: Pokud jsme na konečné, otočíme směr pro nástup cestujících!
+    let effectiveDirection = direction;
+    if (currentStopIndex === 0) {
+        effectiveDirection = 1;  // Na začátku trati můžeme jet jedině dopředu
+    } else if (currentStopIndex === line.stops.length - 1) {
+        effectiveDirection = -1; // Na konci trati můžeme jet jedině zpět
+    }
+
+    // 3. Stanice, kam vlak dále pojede (nyní už správně i z konečných)
+    let upcomingStops = (effectiveDirection === 1) 
+        ? line.stops.slice(currentStopIndex + 1) 
+        : line.stops.slice(0, currentStopIndex).reverse();
+    let upcomingStopIds = upcomingStops.map(s => String(s.id));
+
+    let remainingPassengers = [];
+    let earnings = 0;
+    let alightedCount = 0;
+
+    // A) VÝSTUP Z VLAKU
+    train.passengersOnBoard.forEach(p => {
+        if (!p) return;
+        if (typeof p !== 'object') p = { targetId: String(p), path: null };
+
+        let pTargetId = String(p.targetId);
+        let currentStopId = String(stop.id);
+
+        // Dorazil do cíle (i kdyby to byla konečná stanice)
+        if (currentStopId === pTargetId) {
+    earnings += 750;
+    alightedCount++;
+    totalPassengersTransported++; // <-- PŘIDAT TENTO ŘÁDEK
+    return;
+}
+
+
+        // Pokud vlak dojel na konečnou a lidé v něm ještě nedorazili do svého cíle,
+        // vystoupí a počkají na nástupišti na další spoj/přestup
+        if (isTerminus) {
+            stop.passengers[pTargetId] = stop.passengers[pTargetId] || [];
+            p.path = null;
+            stop.passengers[pTargetId].push(p);
+            alightedCount++;
+            return;
+        }
+
+        if (p.path && Array.isArray(p.path)) {
+            let pathStr = p.path.map(id => String(id));
+            let myIndexInPath = pathStr.indexOf(currentStopId);
+
+            if (myIndexInPath !== -1 && myIndexInPath < pathStr.length - 1) {
+                let nextRequiredStopId = pathStr[myIndexInPath + 1];
+                if (!upcomingStopIds.includes(nextRequiredStopId)) {
+                    stop.passengers[pTargetId] = stop.passengers[pTargetId] || [];
+                    p.path = null;
+                    stop.passengers[pTargetId].push(p);
+                    alightedCount++;
+                    return;
+                }
+            }
+        }
+
+        remainingPassengers.push(p);
+    });
+
+    train.passengersOnBoard = remainingPassengers;
+    balance += earnings;
+
+    // B) NÁSTUP DO VLAKU
+    let boardedCount = 0;
+
+    for (let targetId in stop.passengers) {
+        let waitingList = stop.passengers[targetId];
+
+        if (typeof waitingList === 'number') {
+            let count = waitingList;
+            waitingList = [];
+            for (let i = 0; i < count; i++) waitingList.push({ targetId: targetId, path: null });
+        }
+        if (!Array.isArray(waitingList)) continue;
+
+        let nextWaitingList = [];
+
+        waitingList.forEach(p => {
+            if (!p) return;
+            if (typeof p !== 'object') p = { targetId: String(targetId), path: null };
+
+            let tId = String(p.targetId);
+
+            // Přímý nástup: Pokud leží cíl přímo mezi nadcházejícími stanicemi
+            let isDirectlyOnLine = upcomingStopIds.includes(tId);
+
+            if (isDirectlyOnLine && train.passengersOnBoard.length < train.capacity) {
+                train.passengersOnBoard.push(p);
+                boardedCount++;
+                return;
+            }
+
+            // Přestupní nástup přes Dijkstru
+            if (!p.path) {
+                p.path = getShortestPathDijkstra(stop.id, p.targetId);
+            }
+
+            if (p.path && Array.isArray(p.path) && p.path.length > 1) {
+                let pathStr = p.path.map(id => String(id));
+                let myIdx = pathStr.indexOf(String(stop.id));
+
+                if (myIdx !== -1 && myIdx < pathStr.length - 1) {
+                    let nextStopId = pathStr[myIdx + 1];
+
+                    if (upcomingStopIds.includes(nextStopId) && train.passengersOnBoard.length < train.capacity) {
+                        train.passengersOnBoard.push(p);
+                        boardedCount++;
+                        return;
+                    }
+                }
+            }
+
+            nextWaitingList.push(p);
+        });
+
+        stop.passengers[targetId] = nextWaitingList;
+    }
+
+
+
+    updateStopPopup(stop);
+    updateTrainPopup(train);
+    updateUI();
+}
+
+    function updateUI() {
+            document.getElementById('balance-box').innerText = `${balance.toLocaleString()} Kč`;
+            document.getElementById('train-count').innerText = trains.length;
+
+            let shopHtml = '';
+            VEHICLE_TYPES.forEach(v => {
+                shopHtml += `<div class="item-card">
+                    <b>${v.name}</b>
+                    <span style="font-size: 11px; color: #aaa;">Rychlost: ${v.speed} km/h | Kapacita: ${v.capacity} os.</span>
+                    <span class="price-tag">${v.price.toLocaleString()} Kč</span>
+                    <button class="action-btn" onclick="buyTrain('${v.id}')">Koupit vozidlo</button>
+                </div>`;
+            });
+            document.getElementById('vehicle-shop').innerHTML = shopHtml;
+
+            let fleetHtml = '';
+            trains.forEach(t => {
+                fleetHtml += `<div class="item-card">
+                    <b>🚆 ${t.model} <span style="font-size:10px; color:#f1c40f;">(${t.id})</span></b>
+                    <span style="font-size:11px; color:#aaa;">Tachometr: ${t.distanceKm.toFixed(1)} km</span>
+                    <span style="font-size:11px; color:#aaa;">Obsazenost: ${t.passengersOnBoard.length} / ${t.capacity} os.</span>
+                    <span style="font-size:11px; color:#aaa;">Stav: ${t.assignedLine ? `V provozu na L${t.assignedLine}` : 'V depu'}</span>
+                    ${t.assignedLine ? `<button class="danger-btn" onclick="unassignTrain('${t.id}')">Stáhnout do depa</button>` : ''}
+                </div>`;
+            });
+            document.getElementById('owned-trains-list').innerHTML = fleetHtml;
+
+            let linesHtml = '';
+            lines.forEach(l => {
+                let availableTrains = trains.filter(t => !t.assignedLine);
+                let selectOptions = availableTrains.map(t => `<option value="${t.id}">${t.model} (${t.id})</option>`).join('');
+
+                linesHtml += `<div class="item-card" style="border-left: 5px solid ${l.color}">
+                    <b>🗺️ ${l.name}</b>
+                    <span style="font-size:11px; color:#aaa;">Zastávek: ${l.stops.length} | Vlaků: ${l.assignedTrains.length}</span>
+                    <span style="font-size:11px; color:#aaa;">Trasa: ${l.stops[0].name} ➔ ${l.stops[l.stops.length - 1].name}</span>
+
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="action-btn" style="font-size:10px; background:#e67e22;" onclick="appendStopToLine(${l.id}, 'start')">➕ Na začátek</button>
+                        <button class="action-btn" style="font-size:10px; background:#e67e22;" onclick="appendStopToLine(${l.id}, 'end')">➕ Na konec</button>
+                    </div>
+
+                    <div style="margin-top:6px; border-top: 1px solid #333; padding-top: 4px;">
+                        ${availableTrains.length > 0 ? `
+                            <select id="select-train-${l.id}" style="padding:4px; margin-top:4px; width:100%; background:#111; color:#fff; border:1px solid #444;">${selectOptions}</select>
+                            <button class="action-btn" style="margin-top:4px; width:100%;" onclick="assignTrainToLine(document.getElementById('select-train-${l.id}').value, ${l.id})">➕ Nasadit zvolený vlak</button>
+                        ` : '<span style="color:#aaa; font-size:10px;">Žádný volný vlak v depu</span>'}
+                    </div>
+                </div>`;
+            });
+            document.getElementById('lines-list').innerHTML = linesHtml;
+
+updateStatsUI();
+
+        }
+
+        function autoSave() {
+            saveGame(true);
+        }
+
+        function saveGame(silent = false) {
+            let saveData = {
+                balance: balance,
+                stops: stops.map(s => ({ id: s.id, name: s.name, latlng: s.latlng, passengers: s.passengers })),
+                trackSegments: trackSegments.map(s => ({ id: s.id, start: s.start, end: s.end, isTunnel: s.isTunnel, cost: s.cost })),
+                trains: trains.map(t => ({ id: t.id, model: t.model, speed: t.speed, capacity: t.capacity, img: t.img, assignedLine: t.assignedLine, distanceKm: t.distanceKm })),
+                lines: lines.map(l => ({ id: l.id, name: l.name, color: l.color, stopsIds: l.stops.map(s => s.id), assignedTrains: l.assignedTrains }))
+            };
+
+            localStorage.setItem('ostrava_tram_train_save', JSON.stringify(saveData));
+            if (!silent) alert("Hra byla úspěšně uložena!");
+        }
+
+        function loadGame() {
+    let dataRaw = localStorage.getItem('ostrava_tram_train_save');
+    if (!dataRaw) return alert("Žádná uložená pozice nebyla nalezena!");
+
+    let data = JSON.parse(dataRaw);
+
+    // 1. Vyčištění starých prvků z mapy
+    stops.forEach(s => { if (s.marker) map.removeLayer(s.marker); });
+    trackSegments.forEach(s => { if (s.polyline) map.removeLayer(s.polyline); });
+    lines.forEach(l => { if (l.polyline) map.removeLayer(l.polyline); });
+    trains.forEach(t => { 
+        t.isMoving = false;
+        if (t.marker) map.removeLayer(t.marker); 
+    });
+
+    balance = data.balance || 350000000;
+    totalPassengersTransported = data.totalPassengersTransported || 0;
+    totalDistanceTraveledKm = data.totalDistanceTraveledKm || 0;
+
+    stops = [];
+    trackSegments = [];
+    lines = [];
+    trains = [];
+    nodes = [];
+
+    // 2. NAČTENÍ ZASTÁVEK
+    if (data.stops) {
+        data.stops.forEach(s => {
+            let marker = L.marker(s.latlng, { icon: L.divIcon({ className: 'stop-marker' }) }).addTo(map);
+            marker.bindPopup('');
+
+            let stopObj = { 
+                id: s.id, 
+                name: s.name, 
+                latlng: s.latlng, 
+                marker: marker, 
+                passengers: s.passengers || {} 
+            };
+            stops.push(stopObj);
+
+            marker.on('click', () => {
+                if (isCreatingLine || extendingLine) {
+                    marker.closePopup();
+                    onStopClick(stopObj);
+                } else {
+                    updateStopPopup(stopObj);
+                }
+            });
+
+            updateStopPopup(stopObj);
+        });
+    }
+
+    // 3. NAČTENÍ KOLEJÍ
+    if (data.trackSegments) {
+        data.trackSegments.forEach(s => {
+            let polyline = L.polyline([s.start, s.end], {
+                color: s.isTunnel ? '#9b59b6' : '#3498db',
+                weight: s.isTunnel ? 4 : 5,
+                dashArray: s.isTunnel ? '6, 6' : null
+            }).addTo(map);
+
+            let segObj = { id: s.id, start: s.start, end: s.end, polyline: polyline, isTunnel: s.isTunnel, cost: s.cost };
+            trackSegments.push(segObj);
+
+            polyline.on('click', () => {
+                if (currentMode === 'demolish') demolishSegment(segObj);
+            });
+
+            addNodeMarker(s.start);
+            addNodeMarker(s.end);
+        });
+    }
+
+    // 4. NAČTENÍ LINEK
+    if (data.lines) {
+        data.lines.forEach(l => {
+            let lineStops = l.stopsIds.map(id => stops.find(s => s.id === id)).filter(Boolean);
+            let calculatedPath = buildPathFromStops(lineStops);
+            let linePolyline = L.polyline(calculatedPath, { color: l.color, weight: 6, opacity: 0.8 }).addTo(map);
+
+            lines.push({
+                id: l.id,
+                name: l.name,
+                color: l.color,
+                stops: lineStops,
+                path: calculatedPath,
+                polyline: linePolyline,
+                assignedTrains: []
+            });
+        });
+    }
+
+    // 5. NAČTENÍ VLAKŮ
+    if (data.trains) {
+        data.trains.forEach(t => {
+            let trainObj = {
+                id: t.id,
+                model: t.model,
+                speed: t.speed,
+                capacity: t.capacity,
+                price: t.price || 5000000,
+                img: t.img,
+                assignedLine: null,
+                distanceKm: t.distanceKm || 0,
+                passengersOnBoard: t.passengersOnBoard || [],
+                isMoving: false
+            };
+            trains.push(trainObj);
+
+            if (t.assignedLine) {
+                let targetLine = lines.find(l => l.id === t.assignedLine);
+                if (targetLine) {
+                    trainObj.assignedLine = targetLine.id;
+                    if (!targetLine.assignedTrains.includes(trainObj.id)) {
+                        targetLine.assignedTrains.push(trainObj.id);
+                    }
+
+                    // Vytvoříme marker vlaku
+                    let firstPt = targetLine.path[0];
+                    trainObj.marker = L.marker([firstPt.lat, firstPt.lng], {
+                        icon: L.divIcon({ 
+                            className: 'train-img-icon', 
+                            html: `<img src="${trainObj.img}" class="train-img-marker" style="border-color:${targetLine.color};">` 
+                        })
+                    }).addTo(map);
+
+                    trainObj.marker.bindPopup('');
+                    trainObj.marker.on('click', () => updateTrainPopup(trainObj));
+                }
+            }
+        });
+    }
+
+    // 6. ROZPROSTŘENÍ VLAKŮ NA SÍTÍ A SPUŠTĚNÍ POHYBU
+    lines.forEach(line => {
+        distributeTrainsEvenlyOnLine(line.id);
+    });
+
+    trains.forEach(t => {
+        if (t.assignedLine) {
+            let l = lines.find(line => line.id === t.assignedLine);
+            if (l) startTrainMovement(t, l);
+        }
+    });
+
+    setMode('select');
+    updateUI();
+    alert("Hra byla úspěšně načtena!");
+}
+    
+    </script>
+</body>
 </html>
