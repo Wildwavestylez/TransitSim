@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101820" />
+    <meta
+      name="description"
+      content="TransitSim — modulární simulátor městské a regionální dopravy."
+    />
+    <title>TransitSim — Transport Simulation</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="TransitSim domů">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span>TransitSim</span>
+        </a>
+        <div class="topbar-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          Technický základ
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar" aria-label="Ovládání simulátoru">
+          <p class="eyebrow">NOVÝ DOPRAVNÍ SIMULÁTOR</p>
+          <h1>Budujeme dopravní síť.</h1>
+          <p class="intro">
+            Modulární základ pro simulaci skutečných měst, infrastruktury a
+            integrované veřejné dopravy.
+          </p>
+
+          <section class="panel-section">
+            <h2>Vývojový stav</h2>
+            <div class="status-card">
+              <span class="status-icon" aria-hidden="true">✓</span>
+              <div>
+                <strong>Projektová architektura</strong>
+                <p>Inventář a migrační plán připraveny</p>
+              </div>
+            </div>
+            <div class="status-card">
+              <span class="status-icon pending" aria-hidden="true">○</span>
+              <div>
+                <strong>První síť infrastruktury</strong>
+                <p>Další krok: testovatelné herní jádro</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <h2>Principy hry</h2>
+            <ul class="principles">
+              <li>Skutečná geografie</li>
+              <li>Upravitelná infrastruktura</li>
+              <li>Trasy respektující síť</li>
+              <li>Testovatelné herní jádro</li>
+            </ul>
+          </section>
+
+          <footer class="sidebar-footer">
+            <span>TransitSim</span>
+            <span>Verze 0.1 · Základ projektu</span>
+          </footer>
+        </aside>
+
+        <section class="map-panel" aria-label="Mapa světa">
+          <div id="map" role="application" aria-label="Interaktivní mapa"></div>
+          <div class="map-label">
+            <span class="map-label-kicker">MAPOVÝ NÁHLED</span>
+            <strong>Evropa</strong>
+            <span>Výchozí pohled · výběr města bude následovat</span>
+          </div>
+          <div class="map-attribution-note">
+            Mapové podklady © OpenStreetMap contributors
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
