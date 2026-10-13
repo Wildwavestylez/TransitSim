@@ -280,10 +280,36 @@
 
        // Globální cache pro uložení již spočítaných tras
 let pathCache = {};
+let nearbyStopsCache = null;
 
-// Funkce pro reset paměti – zvolej ji vždy při změně sítě!
+// Zneplatníme jen výpočty závislé na síti, když se změní zastávky nebo linky.
 function clearPathCache() {
     pathCache = {};
+}
+
+function clearNearbyStopsCache() {
+    nearbyStopsCache = null;
+}
+
+function invalidateNetworkCaches() {
+    clearPathCache();
+    clearNearbyStopsCache();
+}
+
+function getNearbyStopsByStop() {
+    if (nearbyStopsCache) return nearbyStopsCache;
+
+    const MAX_TRAVEL_DISTANCE_KM = 16;
+    nearbyStopsCache = new Map();
+
+    stops.forEach(stop => {
+        nearbyStopsCache.set(stop.id, stops.filter(target => {
+            if (target.id === stop.id) return false;
+            return map.distance(stop.latlng, target.latlng) / 1000 <= MAX_TRAVEL_DISTANCE_KM;
+        }));
+    });
+
+    return nearbyStopsCache;
 }
 
 
@@ -456,6 +482,7 @@ function updateStatsUI() {
             };
 
             stops.push(stopObj);
+            clearNearbyStopsCache();
 
             marker.on('click', () => {
                 if (isCreatingLine || extendingLine) {
@@ -474,6 +501,7 @@ function updateStatsUI() {
         function undoLastStop() {
             if (stops.length === 0) return alert("Žádná zastávka ke zrušení!");
             let lastStop = stops.pop();
+            clearNearbyStopsCache();
             map.removeLayer(lastStop.marker);
             balance += COST_STOP; // Vracíme 100% (5M)
             autoSave();
@@ -525,14 +553,10 @@ function updateStatsUI() {
 setInterval(() => {
     if (stops.length < 2) return;
 
-    const MAX_TRAVEL_DISTANCE_KM = 16; 
+    const nearbyStopsByStop = getNearbyStopsByStop();
 
     stops.forEach(stop => {
-        let reachableStops = stops.filter(target => {
-            if (target.id === stop.id) return false;
-            let distKm = map.distance(stop.latlng, target.latlng) / 1000;
-            return distKm <= MAX_TRAVEL_DISTANCE_KM;
-        });
+        let reachableStops = nearbyStopsByStop.get(stop.id) || [];
 
         if (reachableStops.length > 0) {
             let target = reachableStops[Math.floor(Math.random() * reachableStops.length)];
@@ -642,6 +666,9 @@ function sellTrain(trainId) {
             extendingLine.stops.push(stopObj);
         }
 
+        // Změnila se síť linek, proto zneplatníme uložené cesty cestujících.
+        invalidateNetworkCaches();
+
         // Přepočítáme kompletní trasu (geometry path) linky
         extendingLine.path = buildPathFromStops(extendingLine.stops);
         redrawLinePolyline(extendingLine);
@@ -728,6 +755,7 @@ function sellTrain(trainId) {
                 assignedTrains: [] 
             });
 
+            invalidateNetworkCaches();
             isCreatingLine = false;
             document.getElementById('line-creation-info').style.display = 'none';
             autoSave();
@@ -1440,6 +1468,7 @@ updateStatsUI();
     lines = [];
     trains = [];
     nodes = [];
+    invalidateNetworkCaches();
 
     // 2. NAČTENÍ ZASTÁVEK
     if (data.stops) {
