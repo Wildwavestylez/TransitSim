@@ -855,6 +855,7 @@ function initializeAllTrainPositions() {
 
 function startTrainMovement(train, line) {
     if (!train || !line || !Array.isArray(line.path) || line.path.length < 2) return;
+    const currentPath = line.path;
     if (train.isMoving && train.assignedLine === line.id) return;
 
     // Každé spuštění dostane vlastní token. Starší animace a timeouty
