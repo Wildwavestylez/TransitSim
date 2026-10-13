@@ -8,12 +8,23 @@ const STORAGE_KEY = 'transitsim-world-v1';
 const modeNames = { tram: 'tramvajová trať', bus: 'autobusová trasa', rail: 'železniční trať' };
 
 if (mapElement) {
-  const map = L.map(mapElement, { zoomControl: false, scrollWheelZoom: true }).setView([50.8, 10.5], 5.5);
+  const map = L.map(mapElement, { zoomControl: false, scrollWheelZoom: true }).setView([49.8, 15.5], 7);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   }).addTo(map);
+
+  const railwayLayer = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+    attribution: 'Železniční vrstva © OpenRailwayMap contributors',
+    minZoom: 2,
+    maxZoom: 19,
+    opacity: 0.82,
+  }).addTo(map);
+  const baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+  });
+  L.control.layers({ 'OpenStreetMap': baseMap }, { 'Železnice': railwayLayer }, { collapsed: true, position: 'topright' }).addTo(map);
 
   let network = createNetwork();
   let tool = 'node';
