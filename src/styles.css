@@ -282,3 +282,26 @@ h1 {
   .build-tools { gap: 7px; }
   .tool-button, .tool-select { padding: 8px 7px; font-size: 10px; }
 }
+
+
+/* Map-first layout inspired by the original transport prototype */
+.workspace { grid-template-columns: 300px minmax(0, 1fr); }
+.map-panel { min-height: 0; }
+#map { background: #dfe7e4; }
+.map-label { top: 18px; left: 18px; }
+.leaflet-control-layers {
+  border: 1px solid rgba(18,32,43,.14) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(12,20,28,.18) !important;
+}
+.leaflet-control-layers-toggle { width: 36px !important; height: 36px !important; }
+.leaflet-control-layers-expanded { padding: 10px 12px !important; color: #17232e; }
+.tool-button:focus-visible, .tool-select:focus-visible {
+  outline: 2px solid #57d6b2;
+  outline-offset: 2px;
+}
+@media (max-width: 720px) {
+  .workspace { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 42vh) minmax(0, 1fr); }
+  .map-panel { min-height: 0; }
+  .map-label { top: 8px; left: 8px; }
+}
