@@ -315,9 +315,29 @@
 
        // Omezená LRU cache: nedovolíme, aby se páry zastávek hromadily bez konce.
 const PATH_CACHE_LIMIT = 2000;
+const TRACK_PATH_CACHE_LIMIT = 500;
 let pathCache = new Map();
+let trackPathCache = new Map();
 let nearbyStopsCache = null;
 let routeGraphCache = null;
+
+function clearTrackPathCache() {
+    trackPathCache.clear();
+}
+
+function getTrackPathCacheKey(startLatLng, endLatLng) {
+    // Přesné souřadnice: nepovažujeme blízké, ale odlišné body za stejný požadavek.
+    return `${Number(startLatLng.lat)},${Number(startLatLng.lng)}->${Number(endLatLng.lat)},${Number(endLatLng.lng)}`;
+}
+
+function cacheTrackPath(key, path) {
+    if (trackPathCache.has(key)) trackPathCache.delete(key);
+    // Ukládáme kopii, aby pozdější úprava výsledku nezměnila obsah cache.
+    trackPathCache.set(key, path.map(point => L.latLng(point.lat, point.lng)));
+    if (trackPathCache.size > TRACK_PATH_CACHE_LIMIT) {
+        trackPathCache.delete(trackPathCache.keys().next().value);
+    }
+}
 
 function clearPathCache() {
     pathCache.clear();
@@ -333,6 +353,7 @@ function clearRouteGraphCache() {
 
 function invalidateNetworkCaches() {
     clearPathCache();
+    clearTrackPathCache();
     clearNearbyStopsCache();
     clearRouteGraphCache();
 }
@@ -590,6 +611,7 @@ function updateStatsUI() {
 
                 let segmentObj = { id: Date.now(), start: trackStartPoint, end: latlng, polyline: polyline, isTunnel: isTunnel, cost: cost };
                 trackSegments.push(segmentObj);
+                clearTrackPathCache();
 
                 polyline.on('click', () => {
                     if (currentMode === 'demolish') {
@@ -610,6 +632,7 @@ function updateStatsUI() {
         function undoLastTrack() {
             if (trackSegments.length === 0) return alert("Žádná postavená kolej ke zrušení!");
             let lastSeg = trackSegments.pop();
+            clearTrackPathCache();
             map.removeLayer(lastSeg.polyline);
             balance += lastSeg.cost; // Vracíme 100% ceny
             autoSave();
@@ -619,6 +642,7 @@ function updateStatsUI() {
         function demolishSegment(segment) {
             map.removeLayer(segment.polyline);
             trackSegments = trackSegments.filter(s => s.id !== segment.id);
+            clearTrackPathCache();
             balance += Math.round(segment.cost * 0.5);
             alert("Úsek kolejí zbourán, vrací se 50% financí.");
             autoSave();
@@ -871,20 +895,33 @@ function sellTrain(trainId) {
         }
 
         function findTrackPath(startLatLng, endLatLng) {
-            let queue = [[startLatLng]];
-            let visited = [];
+            const cacheKey = getTrackPathCacheKey(startLatLng, endLatLng);
+            if (trackPathCache.has(cacheKey)) {
+                // LRU: často používané cesty zůstávají v cache déle.
+                const cachedPath = trackPathCache.get(cacheKey);
+                trackPathCache.delete(cacheKey);
+                trackPathCache.set(cacheKey, cachedPath);
+                return cachedPath.map(point => L.latLng(point.lat, point.lng));
+            }
 
-            while (queue.length > 0) {
-                let path = queue.shift();
-                let current = path[path.length - 1];
+            // Zachováváme původní BFS a původní toleranci 20 m.
+            // Index fronty místo shift() odstraňuje opakované posouvání pole.
+            const queue = [[startLatLng]];
+            let queueHead = 0;
+            const visited = [];
+
+            while (queueHead < queue.length) {
+                const path = queue[queueHead++];
+                const current = path[path.length - 1];
 
                 if (map.distance(current, endLatLng) < 20) {
+                    cacheTrackPath(cacheKey, path);
                     return path;
                 }
 
                 visited.push(current);
 
-                let neighbors = [];
+                const neighbors = [];
                 trackSegments.forEach(seg => {
                     if (map.distance(seg.start, current) < 20) neighbors.push(seg.end);
                     if (map.distance(seg.end, current) < 20) neighbors.push(seg.start);
@@ -897,7 +934,10 @@ function sellTrain(trainId) {
                 });
             }
 
-            return [startLatLng, endLatLng];
+            // Zachováváme i původní fallback pro případ, že koleje nespojují oba body.
+            const fallbackPath = [startLatLng, endLatLng];
+            cacheTrackPath(cacheKey, fallbackPath);
+            return fallbackPath;
         }
 
         function finishLineCreation() {
