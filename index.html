@@ -166,6 +166,28 @@
             }
             .save-btn { font-size: 10px; padding: 10px 2px; }
         }
+
+        /* Interaktivní tutoriál */
+        #tutorial-panel {
+            display: none; position: absolute; z-index: 1200; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+            transform: translateX(-50%); width: min(440px, calc(100vw - 24px));
+            background: rgba(20, 22, 30, 0.97); border: 1px solid #3498db; border-radius: 14px;
+            padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.55); color: #fff;
+        }
+        #tutorial-panel.visible { display: block; }
+        #tutorial-panel h3 { font-size: 17px; margin-bottom: 8px; color: #7ec8ff; }
+        #tutorial-panel p { font-size: 14px; line-height: 1.45; margin-bottom: 10px; }
+        #tutorial-step-label { color: #aaa; font-size: 11px; margin-bottom: 6px; }
+        .tutorial-actions { display: flex; gap: 8px; }
+        .tutorial-actions button { flex: 1; border: 0; border-radius: 7px; padding: 10px; font-weight: 700; cursor: pointer; }
+        #tutorial-help-btn { background: #34495e; color: #fff; width: 100%; border: 1px solid #4a6178; border-radius: 7px; padding: 10px; cursor: pointer; font-weight: 700; }
+        #tutorial-close { background: #333743; color: #fff; }
+        #tutorial-action { background: #2479b7; color: #fff; }
+        @media (max-width: 600px) {
+            #tutorial-panel { bottom: calc(12px + env(safe-area-inset-bottom)); padding: 13px; }
+            #tutorial-panel h3 { font-size: 16px; }
+            #tutorial-panel p { font-size: 13px; }
+        }
     </style>
 </head>
 <body>
@@ -185,6 +207,8 @@
 
         <div id="sidebar">
         <button class="close-btn" onclick="toggleSidebar()">✕</button>
+
+        <button id="tutorial-help-btn" onclick="startTutorial()">🎓 Jak hrát? – tutoriál</button>
 
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('build')">🔨 Stavba</button>
@@ -229,6 +253,17 @@
             <button class="save-btn" onclick="saveGame()">💾 Uložit</button>
             <button class="save-btn" onclick="loadGame()">📂 Načíst</button>
             <button class="save-btn" style="background:#c0392b;" onclick="resetGame()">🗑️ Reset</button>
+        </div>
+    </div>
+
+    <div id="tutorial-panel" role="dialog" aria-live="polite" aria-label="Tutoriál TransitSim">
+        <div id="tutorial-step-label"></div>
+        <h3 id="tutorial-title"></h3>
+        <p id="tutorial-message"></p>
+        <p id="tutorial-hint" style="color:#f1c40f;font-size:12px;"></p>
+        <div class="tutorial-actions">
+            <button id="tutorial-close" onclick="stopTutorial()">Zavřít</button>
+            <button id="tutorial-action" onclick="tutorialAction()">Rozumím</button>
         </div>
     </div>
 
@@ -368,6 +403,80 @@ function getNearbyStopsByStop() {
     return nearbyStopsCache;
 }
 
+
+
+        // Tutoriál sleduje skutečné herní objekty; nic za hráče nestaví ani nekupuje.
+        let tutorialState = null;
+        const TUTORIAL_STEPS = [
+            { title: '1/5 · Postav první kolej', message: 'Otevři záložku Stavba, vyber „Koleje“ a klikni na dvě místa na mapě. Tím vytvoříš první úsek.', hint: 'Tip: první klik určí začátek, druhý konec úseku.' },
+            { title: '2/5 · Umísti dvě zastávky', message: 'Po stavbě kolejí se zobrazí malá bílá kolečka. Přepni nástroj na „Zastávka“ a klikni na dvě z těchto koleček.', hint: 'Zastávky se umisťují na uzly trati, ne libovolně vedle kolejí.' },
+            { title: '3/5 · Vytvoř linku', message: 'Otevři záložku Linky a zvol „Vytvořit novou linku“. Potom klikni na své dvě zastávky a dokonči linku.', hint: 'Pořadí kliknutí určí pořadí zastávek na lince.' },
+            { title: '4/5 · Kup vlak', message: 'Otevři záložku Depo a kup vozidlo, které se vejde do tvého rozpočtu.', hint: 'Vozidla se liší cenou, rychlostí a kapacitou.' },
+            { title: '5/5 · Nasaď vlak na linku', message: 'Vrať se do záložky Linky a u své linky vyber volný vlak. Stiskni „Nasadit zvolený vlak“.', hint: 'Jakmile je vlak přiřazený, měl by vyrazit do provozu.' },
+            { title: '🎉 Tvoje první linka je v provozu!', message: 'Hotovo! Teď můžeš sledovat vlak, rozšiřovat síť a zkoumat, odkud a kam cestující cestují.', hint: 'Tutoriál můžeš kdykoliv znovu otevřít tlačítkem „Jak hrát?“ v menu.' }
+        ];
+
+        function startTutorial() {
+            tutorialState = {
+                step: 0,
+                tracks: trackSegments.length,
+                stops: stops.length,
+                lines: lines.length,
+                trains: trains.length,
+                assigned: trains.filter(t => !!t.assignedLine).length
+            };
+            document.getElementById('tutorial-panel').classList.add('visible');
+            updateTutorialUI();
+            toggleSidebar();
+        }
+
+        function stopTutorial() {
+            tutorialState = null;
+            document.getElementById('tutorial-panel').classList.remove('visible');
+        }
+
+        function tutorialAction() {
+            if (!tutorialState) return;
+            // Tutoriál se posouvá po splnění herního úkolu, tlačítko slouží jen k potvrzení/zavření.
+            if (tutorialState.step >= TUTORIAL_STEPS.length - 1) stopTutorial();
+            else {
+                const hints = [
+                    'Nejdřív opravdu postav úsek kolejí.',
+                    'Ještě umísti dvě zastávky na uzlech kolejí.',
+                    'Vytvoř linku, která obsahuje obě zastávky.',
+                    'Kup alespoň jeden vlak.',
+                    'Přiřaď koupený vlak ke své lince.'
+                ];
+                document.getElementById('tutorial-hint').textContent = hints[tutorialState.step] || '';
+            }
+        }
+
+        function updateTutorialUI() {
+            if (!tutorialState) return;
+            const step = TUTORIAL_STEPS[tutorialState.step];
+            document.getElementById('tutorial-step-label').textContent =
+                tutorialState.step < 5 ? 'ZÁKLADNÍ TUTORIÁL · KROK ' + (tutorialState.step + 1) + ' Z 5 : ' : 'TUTORIÁL DOKONČEN';
+            document.getElementById('tutorial-title').textContent = step.title;
+            document.getElementById('tutorial-message').textContent = step.message;
+            document.getElementById('tutorial-hint').textContent = step.hint;
+            document.getElementById('tutorial-action').textContent =
+                tutorialState.step >= TUTORIAL_STEPS.length - 1 ? 'Dokončit' : 'OK';
+        }
+
+        function checkTutorialProgress() {
+            if (!tutorialState) return;
+            const t = tutorialState;
+            const newStep = t.step === 0 && trackSegments.length > t.tracks ? 1
+                : t.step === 1 && stops.length >= t.stops + 2 ? 2
+                : t.step === 2 && lines.length > t.lines ? 3
+                : t.step === 3 && trains.length > t.trains ? 4
+                : t.step === 4 && trains.filter(train => !!train.assignedLine).length > t.assigned ? 5
+                : t.step;
+            if (newStep !== t.step) {
+                t.step = newStep;
+                updateTutorialUI();
+            }
+        }
 
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
 
@@ -1462,6 +1571,7 @@ function handlePassengerBoarding(train, stop, line, direction) {
             document.getElementById('lines-list').innerHTML = linesHtml;
 
 updateStatsUI();
+            checkTutorialProgress();
 
         }
 
